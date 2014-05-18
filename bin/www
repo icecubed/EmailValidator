@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+
+var debug = require('debug')('my-application');
+var app = require('../app');
+var q = require('q');
+
+var externalAddressController = require('../controllers/externalAddressController');
+
+app.set('port', process.env.PORT || 3000);
+
+/* ../app module is loaded first, 
+it loads all required modules including externalAddressController
+*/
+externalAddressController.getAddress().then(function(data) {
+  console.log('getAddress:', data);
+  app.set('externalIpAddress', data);
+}).catch(function(err) {
+  console.log('getAddress - Error:', err);
+});
+
+var server = app.listen(app.get('port'), function() {
+  debug('Express server listening on port ' + server.address().port);
+});
+
+module.exports = app;
