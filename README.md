@@ -30,7 +30,7 @@ We'll just use the default port. If you have something custom, then you'll need 
 
 Next, install the package
 
-`npm...`
+`npm instal emailvalidator`
 
 run `npm start`
 
