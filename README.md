@@ -36,11 +36,11 @@ Next, install the package
 ## Using as a node module
 
 In the simplest form you can just call:
-```require('emailvalidator').checkEmailAddress('me@lucasjans.com', {externalIpAddress: '93.184.216.119', redisPort: 6379, redisHost: '127.0.0.1'});```
+`require('emailvalidator').checkEmailAddress('me@lucasjans.com', {externalIpAddress: '93.184.216.119', redisPort: 6379, redisHost: '127.0.0.1'}, callback);`
 
 The parameters are optional, but should you lave a blank externalIpAddress you may affect the accuracy of the program.
 
 To lookup your external IP address, just call
-```require('emailvalidator').getExternalIp()```
+`require('emailvalidator').getExternalIp(callback)`
 
 
