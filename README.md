@@ -36,11 +36,52 @@ Next, install the package
 ## Using as a node module
 
 In the simplest form you can just call:
-`require('emailvalidator').checkEmailAddress('me@lucasjans.com', {externalIpAddress: '93.184.216.119', redisPort: 6379, redisHost: '127.0.0.1'}, callback);`
+
+```javascript
+require('emailvalidator').checkEmailAddress('me@lucasjans.com', {externalIpAddress: '93.184.216.119', redisPort: 6379, redisHost: '127.0.0.1'}, callback);
+```
 
 The parameters are optional, but should you lave a blank externalIpAddress you may affect the accuracy of the program.
 
 To lookup your external IP address, just call
-`require('emailvalidator').getExternalIp(callback)`
+
+```javascript
+require('emailvalidator').getExternalIp(callback)
+```
+
+the callback is `function(error, response)`
+
+the response object is:
+
+```javascript
+{
+    "email": "me@lucasjans.com",
+    "valid": false,
+    "reason": "no server to receive mail. cannot connect to mail exchanger"
+}
+```
+
+## Using as a Microservice
+
+Built into this module is a webserver that responds to GET requests on /:email
+
+To start this webserver automatically, just run npm start
+
+Otherwise, you can run it programatically by calling 
+
+```javascript
+var options = {
+    // defaults to 3000
+    port: integer,
+    // if null/empty we will look this up automatically
+    externalIpAddress: '',
+    // defaults to 127.0.0.1
+    redisHost: integer,
+    // defaults to 6379
+    redisPort: integer
+}
+
+require('emailvalidator').startWebServer(options)
+```
 
 
