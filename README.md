@@ -18,7 +18,9 @@ If you send commercial email you know getting your email delivered is very hard 
 
 It is possible that if you query a single provider too much that the email provider will block you. We've implemented a Redis cache to mitigate this.
 
-It is possible that you perform a validity check when an ISP's SMTP server is down, inaccurately noting it as offline
+It is possible that you perform a validity check when an ISP's SMTP server is down, inaccurately noting it as offline.
+
+To do: Right now we just query the first MX record instead of all of them. The code should be refactored to loop through each MX record asynchronously. Anyone care to help?
 
 ## Installation
 
