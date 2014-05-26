@@ -38,7 +38,12 @@ Next, install the package
 In the simplest form you can just call:
 
 ```javascript
-require('emailvalidator').checkEmailAddress('me@lucasjans.com', {externalIpAddress: '93.184.216.119', redisPort: 6379, redisHost: '127.0.0.1'}, callback);
+var options = {
+    externalIpAddress: '93.184.216.119', 
+    redisPort: 6379, 
+    redisHost: '127.0.0.1'
+}
+require('emailvalidator').checkEmailAddress('me@lucasjans.com', options, callback);
 ```
 
 The parameters are optional, but should you lave a blank externalIpAddress you may affect the accuracy of the program.
@@ -65,7 +70,7 @@ the response object is:
 
 Built into this module is a webserver that responds to GET requests on /:email
 
-To start this webserver automatically, just run npm start
+To start this webserver automatically, just run `npm start`
 
 Otherwise, you can run it programatically by calling 
 
