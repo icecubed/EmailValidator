@@ -3,11 +3,20 @@ var dns = require('dns');
 var _ = require('underscore');
 
 
-module.exports = function(app) {
+/**
+ * the module for the validatorController
+ * @return {Object}
+ */
+module.exports = function() {
   // console.log(app.get('externalIpAddress'));
   var validatorController = {
 
     functions: {
+      /**
+       * [getMxRecord returns a string array of Mx records for a given domain]
+       * @param  {string} domain  the input domain
+       * @return {Q.Promise<Array>} x {string}
+       */
       getMxRecord: function(domain) {
         var defer = q.defer();
 
@@ -17,8 +26,9 @@ module.exports = function(app) {
           } else {
             // properly sort the mx records
             var addressList = _.chain(addresses).sortBy(function(item) {
+
               return item.priority;
-            }).pluck("exchange").value();
+            }).pluck('exchange').value();
             defer.resolve(addressList);
           }
         });
@@ -29,31 +39,31 @@ module.exports = function(app) {
       getARecord: function(domain) {
         var dnsResolve = q.denodeify(dns.resolve);
 
-        console.log("start getARecord");
+        console.log('start getARecord');
 
         return dnsResolve(domain).timeout(1000);
       },
 
-      checkMailExchanger: function(domain) {
+      checkMailExchanger: function(domain, externalIpAddress, redisHost, redisPort) {
         var redis = require('redis'),
-          redisClient = redis.createClient();
+            redisClient = redis.createClient(redisHost, redisPort);
         var expires = 60 * 60; //one hour
 
 
         var checkMx = function(domain) {
           var defer = q.defer();
           setTimeout(function() {
-            defer.reject("timeout")
+            defer.reject('timeout');
           }, 2000);
 
           var net = require('net');
           var client = net.connect({
-              port: 25,
-              host: domain
-            },
-            function() {
-              client.write('helo ' + app.get('externalIpAddress') + '\r\n');
-            });
+            port: 25,
+            host: domain
+          },
+          function() {
+            client.write('helo ' + externalIpAddress + '\r\n');
+          });
           client.on('data', function(data) {
             console.log(data.toString());
             client.end();
@@ -63,13 +73,13 @@ module.exports = function(app) {
           client.on('error', function(error) {
             console.log('error: ', error);
             defer.reject(error);
-          })
+          });
           client.on('end', function() {
-            defer.resolve("disconnected");
+            defer.resolve('disconnected');
           });
 
           return defer.promise;
-        }
+        };
 
         var checkCache = function(domain) {
           var defer = q.defer();
@@ -81,68 +91,81 @@ module.exports = function(app) {
             }
           });
           return defer.promise;
-        }
+        };
 
         var Q = q.defer();
 
         checkCache(domain).then(function(data) {
-          if (data === "true") {
+          if (data === 'true') {
             Q.resolve(data);
           } else {
             Q.reject(data);
           }
         }).
-        catch (function(error) {
-          checkMx(domain).then(function(data) {
-            console.log("found mx");
-            redisClient.set(domain, data, function(err, reply) {
-              console.log("err", err, "reply", reply);
-              redisClient.expire(domain, expires, redis.print);
-              Q.resolve(true);
+            catch (function(error) {
+              checkMx(domain).then(function(data) {
+                console.log('found mx');
+                redisClient.set(domain, data, function(err, reply) {
+                  console.log('err', err, 'reply', reply);
+                  redisClient.expire(domain, expires, redis.print);
+                  Q.resolve(true);
+                });
+              }).
+                  catch (function(error) {
+                    console.log('not found mx');
+                    var test = redisClient.set(domain, false);
+                    console.log('finished not mx found, ', test);
+                    redisClient.expire(domain, expires, redis.print);
+                    Q.reject('could not find a mail server to deliver to.');
+                  });
             });
-          }).
-          catch (function(error) {
-            console.log("not found mx");
-            var test = redisClient.set(domain, false);
-            console.log("finished not mx found, ", test);
-            redisClient.expire(domain, expires, redis.print);
-            Q.reject("could not find a mail server to deliver to.");
-          });
-        });
 
         return Q.promise;
       },
 
+      /**
+       * Check's email address for RFC compliance. Not implemented, should probably be removed.
+       * @param domain
+       * @return {string}
+       */
       checkRfcCompliance: function(domain) {
-        return "Not yet implemented";
+        return 'Not yet implemented';
       }
 
     },
 
-    checkEmailAddress: function(email) {
+    /**
+     * checks email address for validity, checking syntax and mail servers.
+     * @param email
+     * @return {Q.Promise<Object>}
+     */
+    checkEmailAddress: function(email, options) {
       var defer = q.defer();
+
+      // copy options over base
+      options = _.extend({externalIpAddress: '', redisPort: 6379, redisHost: '127.0.0.1'}, options);
 
       if (email.length < 5) {
         defer.reject({
           email: email,
           valid: false,
-          reason: "not a valid email, too short"
+          reason: 'not a valid email, too short'
         });
       }
 
-      var parts = email.split("@");
+      var parts = email.split('@');
       if (parts[0].length > 64)
         defer.reject({
           email: email,
           valid: false,
-          reason: "mailbox too long (64 chars)"
+          reason: 'mailbox too long (64 chars)'
         });
 
       if (parts.length != 2) {
         defer.reject({
           email: email,
           valid: false,
-          reason: "not a valid email format"
+          reason: 'not a valid email format'
         });
       }
 
@@ -151,42 +174,44 @@ module.exports = function(app) {
 
       this.functions.getMxRecord(hostname).then(function(data) {
         // to do, try all mx records
-        return validatorController.functions.checkMailExchanger(data[0]);
+        return validatorController.functions.checkMailExchanger(data[0], options.externalIpAddress);
 
       },
       function() {
         var Q = q.defer();
 
         validatorController.functions.getARecord(hostname).then(function(data) {
-          validatorController.functions.checkMailExchanger(data[0]).then(function(data) {
-            Q.resolve(data);
-          }).
-          catch (function() {
-            Q.reject("no server to receive mail. cannot connect to mail exchanger");
-          })
+          validatorController.functions.checkMailExchanger(data[0], options.externalIpAddress).
+              then(function(data) {
+                Q.resolve(data);
+              }).
+              catch (function() {
+                Q.reject('no server to receive mail.' +
+                    ' cannot connect to mail exchanger');
+              });
         }).
-        catch (function() {
-          Q.reject("cannot resolve domain name");
-        });
+            catch (function() {
+              Q.reject('cannot resolve domain name');
+            });
 
         return Q.promise;
       }).then(function(data) {
-      defer.resolve({
-        email: email,
-        valid: data
-      });
-    }).
-    catch (function(error) {
-      defer.reject({
-        email: email,
-        valid: false,
-        reason: error
-      });
-    });
+        defer.resolve({
+          email: email,
+          valid: data
+        });
+      }).
+          catch (function(error) {
+            defer.reject({
+              email: email,
+              valid: false,
+              reason: error
+            });
+          });
 
-    return defer.promise;
-  }
+      return defer.promise;
+    }
 
+  };
+  return validatorController;
 };
-return validatorController;
-}

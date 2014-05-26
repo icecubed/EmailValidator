@@ -30,15 +30,17 @@ We'll just use the default port. If you have something custom, then you'll need 
 
 Next, install the package
 
-`npm instal emailvalidator`
+`npm install emailvalidator`
 
-run `npm start`
-
-
-## Using as a Microservice
-
-Just send a `GET` request to <a href="/validator/me@lucasjans.com">/validator/me@lucasjans.com</a>
 
 ## Using as a node module
 
-This hasn't been setup to run as a node module. You could yank out the controllor or refactor the code to make this possible. 
+In the simplest form you can just call:
+```require('emailvalidator').checkEmailAddress('me@lucasjans.com', {externalIpAddress: '93.184.216.119', redisPort: 6379, redisHost: '127.0.0.1'});```
+
+The parameters are optional, but should you lave a blank externalIpAddress you may affect the accuracy of the program.
+
+To lookup your external IP address, just call
+```require('emailvalidator').getExternalIp()```
+
+

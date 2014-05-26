@@ -10,12 +10,12 @@ var externalAddressController = {
       if (!error && response.statusCode == 200) {
         Q.resolve(body);
       } else {
-        Q.reject("error");
+        Q.reject('error');
       }
     });
 
     return Q.promise;
   }
-}
+};
 
 module.exports = externalAddressController;
