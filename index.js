@@ -50,12 +50,15 @@ var EmailValidator = {
 module.exports = EmailValidator;
 
 // start the web server automatically if the startWebServer parameter is passed
-if (process.argv.length === 3 && process.argv[2] === 'startWebServer') {
-  var options = {};
-  if (process.argv.length === 4) {
+if (process.argv.length >= 3 && process.argv[2] === 'startWebServer') {
+  var options = {
+    redisPort: 6379,
+    port: 3000
+  };
+  if (process.argv.length >= 4) {
     options.redisPort = process.argv[3];
   }
-  if (process.argv.length === 5) {
+  if (process.argv.length >= 5) {
     options.port = process.argv[4];
   }
   EmailValidator.startWebServer(options);

@@ -2,12 +2,12 @@
   "name": "emailvalidator",
   "version": "0.1.1",
   "private": false,
-  "repository" :
-  { "type" : "git"
-    , "url" : "https://github.com/agencyrevolution/EmailValidator.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agencyrevolution/EmailValidator.git"
   },
   "scripts": {
-     "start": "node ./index.js startWebServer"
+    "start": "node ./index.js startWebServer"
   },
   "publishConfig": {
     "registery": "http://registry.npmjs.org/"
@@ -16,9 +16,8 @@
     "q": "^1.0.1",
     "underscore": "^1.6.0",
     "request": "^2.34.0",
-    "redis": "^0.10.1"
+    "redis": "^0.10.1",
+    "express": "^4.3.1"
   },
-  "devDependencies": {
-
-  }
+  "devDependencies": {}
 }
