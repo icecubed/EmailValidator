@@ -33,7 +33,7 @@ var functions = {
 
     console.log('start getARecord');
 
-    return dnsResolve(domain).timeout(1000);
+    return dnsResolve(domain).timeout(2000);
   },
 
   checkMailExchanger: function(domain, externalIpAddress, redisHost, redisPort) {
@@ -46,7 +46,7 @@ var functions = {
       var defer = q.defer();
       setTimeout(function() {
         defer.reject('timeout');
-      }, 2000);
+      }, 20000);
 
       var net = require('net');
       var client = net.connect({
