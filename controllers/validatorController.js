@@ -46,7 +46,7 @@ var functions = {
       var defer = q.defer();
       setTimeout(function() {
         defer.reject('timeout');
-      }, 20000);
+      }, 33000);
 
       var net = require('net');
       var client = net.connect({
