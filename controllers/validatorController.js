@@ -1,6 +1,7 @@
 var q = require('q');
 var dns = require('dns');
 var _ = require('underscore');
+var async = require('async');
 
 
 var functions = {
@@ -33,7 +34,7 @@ var functions = {
 
     console.log('start getARecord');
 
-    return dnsResolve(domain).timeout(2000);
+    return dnsResolve(domain).timeout(15000);
   },
 
   checkMailExchanger: function(domain, externalIpAddress, redisHost, redisPort) {
@@ -46,7 +47,7 @@ var functions = {
       var defer = q.defer();
       setTimeout(function() {
         defer.reject('timeout');
-      }, 33000);
+      }, 40000);
 
       var net = require('net');
       var client = net.connect({
@@ -117,11 +118,34 @@ var functions = {
 
   /**
    * Check's email address for RFC compliance. Not implemented, should probably be removed.
-   * @param domain
-   * @return {string}
+   * @param  {String} domain domain name
+   * @return {String}        Not implemented!
    */
   checkRfcCompliance: function(domain) {
     return 'Not yet implemented';
+  },
+
+  /**
+   * Get ARecord then check email exchanger
+   * @param  {string} hostname Host name
+   * @param  {object} options  Options
+   * @return {Promise}         Promise resolve with True, reject with false
+   */
+  checkEmailExchangerForARecord: function(hostname, options) {
+    var Q = q.defer();
+    // get ARecord by hostname
+    functions.getARecord(hostname)
+      .then(function(aRecords) {
+        // check mail exchanger for aRecord
+        return functions.checkMailExchanger(aRecords[0], options.externalIpAddress);
+      })
+      .then(function(data) {
+        Q.resolve(data);
+      })
+      .catch (function() {
+        Q.reject('cannot resolve domain name or mail exchanger');
+      });
+    return Q.promise;
   }
 
 };
@@ -137,7 +161,8 @@ var validatorController = {
 
   /**
    * checks email address for validity, checking syntax and mail servers.
-   * @param email
+   * @param {String} email email address
+   * @param {Object} options the options object
    * @return {Q.Promise<Object>}
    */
   checkEmailAddress: function(email, options) {
@@ -173,36 +198,47 @@ var validatorController = {
     var mailbox = parts[0];
     var hostname = parts[1];
 
-    functions.getMxRecord(hostname).then(function(data) {
-      // to do, try all mx records
-      return functions.checkMailExchanger(data[0], options.externalIpAddress);
-
-    },
-    function() {
-      var Q = q.defer();
-
-      functions.getARecord(hostname).then(function(data) {
-        functions.checkMailExchanger(data[0], options.externalIpAddress).
-            then(function(data) {
-              Q.resolve(data);
-            }).
-            catch (function() {
-              Q.reject('no server to receive mail.' +
-                  ' cannot connect to mail exchanger');
-            });
-      }).
-          catch (function() {
-            Q.reject('cannot resolve domain name');
+    functions.getMxRecord(hostname)
+      // get all MxRecords successfully
+      .then(function(mxRecords) {
+        var Q = q.defer();
+        // to do, try all mx records
+        //return functions.checkMailExchanger(data[0], options.externalIpAddress);
+        async.detect(mxRecords,
+          // iterate each item in data array and find the first mxRecord which can resolve email exchanger
+          function(mxRecord, callback) {
+            // check email exchange by mxRecord and external ip address
+            functions.checkMailExchanger(mxRecord, options.externalIpAddress)
+              .then(function(data) {
+                callback(true);
+              })
+              .catch (function() {
+                callback(false);
+              });
+        }, function(mxRecord) {
+          if (mxRecord) {
+            Q.resolve(true);
+          } else {
+            console.log('no server to receive mail.' +
+              ' cannot connect to any mail exchanger ' +
+              JSON.stringify(mxRecords));
+            // try to get ARecord then check
+            return functions.checkEmailExchangerForARecord(hostname, options);
+          }
+        });
+        return Q.promise;
+      },
+      // no mxRecord
+      function(err) {
+        return functions.checkEmailExchangerForARecord(hostname, options);
+    })
+    .then(function(data) {
+          defer.resolve({
+            email: email,
+            valid: true
           });
-
-      return Q.promise;
-    }).then(function(data) {
-      defer.resolve({
-        email: email,
-        valid: data
-      });
-    }).
-        catch (function(error) {
+        })
+    .catch (function(error) {
           defer.reject({
             email: email,
             valid: false,
