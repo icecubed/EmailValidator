@@ -30,18 +30,32 @@ var functions = {
   },
 
   getARecord: function(domain) {
-    var dnsResolve = q.denodeify(dns.resolve);
 
     console.log('start getARecord');
 
-    return dnsResolve(domain).timeout(15000);
+    var defer = q.defer();
+
+    // timeout
+    setTimeout(function() {
+      defer.reject('timeout');
+    }, 5000);
+
+    dns.resolve(domain, function(err, addresses) {
+      if (err) {
+        defer.reject(err);
+      } else {
+        defer.resolve(addresses);
+      }
+    });
+
+    return defer.promise;
   },
 
   checkMailExchanger: function(domain, externalIpAddress, redisHost, redisPort) {
     var redis = require('redis'),
         redisClient = redis.createClient(redisHost, redisPort);
-    var expires = 60 * 60; //one hour
-
+    var expiresFailed = 60 * 60; //one hour
+    var expiresSuccess = 60  * 60 * 72; // 3 days
 
     var checkMx = function(domain) {
       var defer = q.defer();
@@ -56,6 +70,8 @@ var functions = {
       },
       function() {
         client.write('helo ' + externalIpAddress + '\r\n');
+        // client.end();
+        defer.resolve(true);
       });
       client.on('data', function(data) {
         console.log(data.toString());
@@ -100,7 +116,7 @@ var functions = {
             console.log('found mx');
             redisClient.set(domain, data, function(err, reply) {
               console.log('err', err, 'reply', reply);
-              redisClient.expire(domain, expires, redis.print);
+              redisClient.expire(domain, expiresSuccess, redis.print);
               Q.resolve(true);
             });
           }).
@@ -108,7 +124,7 @@ var functions = {
                 console.log('not found mx');
                 var test = redisClient.set(domain, false);
                 console.log('finished not mx found, ', test);
-                redisClient.expire(domain, expires, redis.print);
+                redisClient.expire(domain, expiresFailed, redis.print);
                 Q.reject('could not find a mail server to deliver to.');
               });
         });
@@ -137,12 +153,14 @@ var functions = {
     functions.getARecord(hostname)
       .then(function(aRecords) {
         // check mail exchanger for aRecord
+        console.log('gotARecord now checking MX', aRecords);
         return functions.checkMailExchanger(aRecords[0], options.externalIpAddress);
       })
       .then(function(data) {
         Q.resolve(data);
       })
       .catch (function() {
+        console.log('cannot resolve domain name or mail exchanger');
         Q.reject('cannot resolve domain name or mail exchanger');
       });
     return Q.promise;
@@ -216,6 +234,7 @@ var validatorController = {
                 callback(false);
               });
         }, function(mxRecord) {
+          console.log('mxRecord:', mxRecord);
           if (mxRecord) {
             Q.resolve(true);
           } else {

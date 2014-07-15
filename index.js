@@ -1,6 +1,7 @@
 var q = require('q');
 var externalAddressController = require('./controllers/externalAddressController');
 var emailValidatorController = require('./controllers/validatorController');
+var helo = '';
 
 var EmailValidator = {
   /**
@@ -23,11 +24,15 @@ var EmailValidator = {
    * @param callback function(failure, success)
    */
   getExternalIp: function(callback) {
-    externalAddressController.getAddress().then(function(data) {
-      callback(null, data);
-    }, function(error) {
-      callback(error, null);
-    });
+    if (helo) {
+      callback(null, helo);
+    } else {
+      externalAddressController.getAddress().then(function(data) {
+        callback(null, data);
+      }, function(error) {
+        callback(error, null);
+      });
+    }
   },
 
   /**
@@ -60,6 +65,9 @@ if (process.argv.length >= 3 && process.argv[2] === 'startWebServer') {
   }
   if (process.argv.length >= 5) {
     options.port = process.argv[4];
+  }
+  if (process.argv.length >= 6) {
+    helo = process.argv[5];
   }
   EmailValidator.startWebServer(options);
 }

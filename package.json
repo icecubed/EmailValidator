@@ -7,7 +7,7 @@
     "url": "https://github.com/agencyrevolution/EmailValidator.git"
   },
   "scripts": {
-    "start": "node ./index.js startWebServer"
+    "start": "node ./index.js startWebServer 6379 3007 www.zipdrip.com"
   },
   "publishConfig": {
     "registery": "http://registry.npmjs.org/"
