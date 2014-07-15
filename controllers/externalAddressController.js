@@ -8,7 +8,7 @@ var externalAddressController = {
 
     request('http://ipinfo.io/ip', function(error, response, body) {
       if (!error && response.statusCode == 200) {
-        Q.resolve(body.trim());
+        Q.resolve('[' + body.trim() + ']');
       } else {
         Q.reject('error');
       }
