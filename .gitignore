@@ -28,5 +28,4 @@ node_modules
 .lock-wscript
 
 # webstorm
-.idea/workspace.xml
-.idea/tasks.xml
+.idea
