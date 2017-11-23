@@ -3,6 +3,8 @@ var dns = require('dns');
 var _ = require('underscore');
 var async = require('async');
 
+var store = {};
+
 
 
 var functions = {
@@ -133,13 +135,24 @@ var functions = {
 
     var checkCache = function(domain) {
       var defer = q.defer();
-      options.redisClient.get(`emailDomain::${domain}`, function(err, reply) {
-        if (!err && (reply !== null)) {
-          defer.resolve(reply);
+      if(options.redisClient){
+        options.redisClient.get(`emailDomain::${domain}`, function(err, reply) {
+          if (!err && (reply !== null)) {
+            defer.resolve(reply);
+          } else {
+            defer.reject(err);
+          }
+        });
+      } else {
+        // get from in memory store.
+        var cachedValue = store[`emailDomain::${domain}`];
+        if(cachedValue){
+          defer.resolve(cachedValue);
         } else {
-          defer.reject(err);
+          defer.reject();
         }
-      });
+      }
+
       return defer.promise;
     };
 
@@ -163,19 +176,31 @@ var functions = {
         checkMx(domain)
           .then(function(data) {
             console.log(' -- -- -- found mx');
-            options.redisClient.set(`emailDomain::${domain}`, JSON.stringify(data), function(err, reply) {
-              console.log(' -- -- -- redis reply', err, 'reply', reply);
-              options.redisClient.expire(`emailDomain::${domain}`, options.redisexpiresSuccess, options.redisClient.print);
+            if(options.redisClient){
+              options.redisClient.set(`emailDomain::${domain}`, JSON.stringify(data), function(err, reply) {
+                console.log(' -- -- -- redis reply', err, 'reply', reply);
+                options.redisClient.expire(`emailDomain::${domain}`, options.redisexpiresSuccess, options.redisClient.print);
+                Q.resolve(data);
+              });
+            } else {
+              store[`emailDomain::${domain}`] = JSON.stringify(data)
               Q.resolve(data);
-            });
+            }
+
           })
           .catch(function(error) {
             console.log(' -- -- -- mx not found');
-            var test = options.redisClient.set(`emailDomain::${domain}`, JSON.stringify(error));
-            console.log(' -- -- -- finished mx not found, ', test);
-            options.redisClient.expire(`emailDomain::${domain}`, options.redisexpiresFailed, options.redisClient.print);
-            error.errorMsg = 'could not find a mail server to deliver to.'
-            Q.reject(error);
+            if(options.redisClient){
+              var test = options.redisClient.set(`emailDomain::${domain}`, JSON.stringify(error));
+              console.log(' -- -- -- finished mx not found, ', test);
+              options.redisClient.expire(`emailDomain::${domain}`, options.redisexpiresFailed, options.redisClient.print);
+              error.errorMsg = 'could not find a mail server to deliver to.'
+              Q.reject(error);
+            } else {
+              error.errorMsg = 'could not find a mail server to deliver to.'
+              store[`emailDomain::${domain}`] = JSON.stringify(data)
+              Q.reject(error);
+            }
           });
       });
 
@@ -268,7 +293,7 @@ var validatorController = {
       domainKey: _.template("emailDomain::<%= domain %>"),
     }, options);
 
-    if(!options.redisClient){
+    if(!options.redisClient && options.useRedis){
       var  redis = require('redis');
       options.redisClient = redis.createClient(options.redisPort, options.redisHost);
     }
