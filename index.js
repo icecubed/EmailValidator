@@ -11,12 +11,11 @@ var EmailValidator = {
    * @param callback function(failure, success)
    */
   checkEmailAddress: function(email, options, callback) {
-    emailValidatorController.checkEmailAddress(email, options).then(function(data) {
-      callback(null, data);
-    }, function(error) {
-      callback(error, null);
-    });
-
+    var promise = emailValidatorController.checkEmailAddress(email, options);
+    if (callback && typeof callback == 'function') {
+        promise.then(callback.bind(null, null), callback);
+    }
+    return promise;
   },
 
   /**
@@ -24,15 +23,16 @@ var EmailValidator = {
    * @param callback function(failure, success)
    */
   getExternalIp: function(callback) {
+    var promise;
     if (helo) {
-      callback(null, helo);
+      promise = q(helo);
     } else {
-      externalAddressController.getAddress().then(function(data) {
-        callback(null, data);
-      }, function(error) {
-        callback(error, null);
-      });
+      promise = externalAddressController.getAddress();
     }
+    if (callback && typeof callback == 'function') {
+        promise.then(callback.bind(null, null), callback);
+    }
+    return promise;
   },
 
   /**
@@ -71,4 +71,3 @@ if (process.argv.length >= 3 && process.argv[2] === 'startWebServer') {
   }
   EmailValidator.startWebServer(options);
 }
-
